@@ -4,6 +4,7 @@
     ],
     "files.associations": {
         "gfxbase.h": "c",
-        "exec.h": "c"
+        "exec.h": "c",
+        "gcc8_c_support.h": "c"
     }
 }

@@ -10,6 +10,8 @@
 #include <hardware/dmabits.h>
 #include <hardware/intbits.h>
 
+#include "BlitterObject.h"
+
 //#define MUSIC
 
 struct ExecBase *SysBase;
@@ -261,9 +263,9 @@ __attribute__((always_inline)) inline USHORT* copWaitY(USHORT* copListEnd, USHOR
 	return copListEnd;
 }
 
-__attribute__((always_inline)) inline USHORT* copSetColor(USHORT* copListCurrent,USHORT index,USHORT color) {
-	*copListCurrent++=offsetof(struct Custom, color[index]);
-	*copListCurrent++=color;
+__attribute__((always_inline)) inline USHORT* copSetColor(USHORT* copListCurrent, USHORT index, USHORT color) {
+	*copListCurrent++ = offsetof(struct Custom, color) + index * 2;
+	*copListCurrent++ = color;
 	return copListCurrent;
 }
 
@@ -384,7 +386,7 @@ int main()
 	pCopFrameBuffer = copPtr;
 	const UBYTE* planes[planeCount];
 	for (int a = 0; a < planeCount; a++) {
-		planes[a]=(UBYTE*)(BackgroundImage + lineSize * a);
+		planes[a]=(UBYTE*)BackgroundImage + lineSize * a;
 	}
 	copPtr = copSetPlanes(0, copPtr, planes, planeCount);
 
@@ -437,26 +439,11 @@ int main()
 		custom->bltsize = screenWordSize;
 
 		// Blit some bobs
-		const unsigned short bobWidth = 32;
-		const unsigned short bobHeight = 16;
-		const APTR bobs[] = { (APTR)Bob1, (APTR)Bob2 };
+		BlitterObject bobs[] = { BlitterObject(Bob1, 32, 16, 5), BlitterObject(Bob2, 32, 16, 5) };
 		for (short i = 0; i < 2; i++) {
 			const short x = 100 + (sinus40[(frameCounter + i) % sizeof(sinus40)] - 20) * (i + 1);
 			const short y = 80 + (sinus40[(frameCounter + i + sizeof(sinus40) / 4) % sizeof(sinus40)] - 20) * (i + 1);
-			const APTR src = bobs[i];
-
-			WaitBlit();
-			custom->bltcon0 = 0xca | SRCA | SRCB | SRCC | DEST | ((x & 15) << ASHIFTSHIFT); // A = source, B = mask, C = background, D = destination
-			custom->bltcon1 = ((x & 15) << BSHIFTSHIFT);
-			custom->bltapt = src;
-			custom->bltamod = (bobWidth - 16) >> 3;
-			custom->bltbpt = src + (bobWidth >> 3);
-			custom->bltbmod = (bobWidth - 16) >> 3;
-			custom->bltcpt = custom->bltdpt = (APTR)backBuffer + (320 >> 3) * planeCount * y + (x >> 3);
-			custom->bltcmod = custom->bltdmod = (320 - bobWidth - 16) >> 3;
-			custom->bltafwm = 0xffff;
-			custom->bltalwm = 0;
-			custom->bltsize = ((bobHeight * planeCount) << HSIZEBITS) | ((bobWidth + 16)/16);
+			bobs[i].DrawObject(backBuffer, x, y);
 		}
 
 		// WinUAE debug overlay test
