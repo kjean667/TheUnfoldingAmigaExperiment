@@ -10,12 +10,13 @@
 #include <hardware/dmabits.h>
 #include <hardware/intbits.h>
 
+#include "FrameBuffer.h"
 #include "BlitterObject.h"
 
 //#define MUSIC
 
 struct ExecBase *SysBase;
-volatile struct Custom *custom;
+static volatile struct Custom *custom;
 struct DosLibrary *DOSBase;
 struct GfxBase *GfxBase;
 
@@ -163,8 +164,7 @@ __attribute__((always_inline)) inline short MouseLeft() {return !((*(volatile UB
 __attribute__((always_inline)) inline short MouseRight() {return !((*(volatile UWORD*)0xdff016)&(1<<10));}
 
 volatile short frameCounter = 0;
-INCBIN(ColorPalette, "Graphics/BackgroundImage.PAL")
-INCBIN_CHIP(BackgroundImage, "Graphics/BackgroundImage.BPL")
+INCBIN(ColorPalette, "Graphics/Default.PAL")
 INCBIN_CHIP(Bob1, "Graphics/bob1.BPL")
 INCBIN_CHIP(Bob2, "Graphics/bob2.BPL")
 
@@ -351,16 +351,15 @@ int main()
 	USHORT* copPtr = copper1;
 	USHORT* pCopFrameBuffer;
 
-	UBYTE* frontBuffer = (UBYTE*)AllocMem(planeCount * 256*320/8, MEMF_CHIP);
-	UBYTE* backBuffer = (UBYTE*)AllocMem(planeCount * 256*320/8, MEMF_CHIP);
+	FrameBuffer frameBuffer1("FrameBuffer1", 320, 256, planeCount);
+	FrameBuffer frameBuffer2("FrameBuffer2", 320, 256, planeCount);
+	FrameBuffer* frontBuffer = &frameBuffer1;
+	FrameBuffer* backBuffer = &frameBuffer2;
 
 	// Register graphics resources with WinUAE for nicer gfx debugger experience
-	debug_register_bitmap(BackgroundImage, "BackgroundImage.BPL", 320, 256, 5, debug_resource_bitmap_interleaved);
-	debug_register_bitmap(frontBuffer, "FrameBuffer1", 320, 256, 5, debug_resource_bitmap_interleaved);
-	debug_register_bitmap(backBuffer, "FrameBuffer2", 320, 256, 5, debug_resource_bitmap_interleaved);
 	debug_register_bitmap(Bob1, "bob1.BPL", 32, 16, 5, debug_resource_bitmap_interleaved | debug_resource_bitmap_masked);
 	debug_register_bitmap(Bob2, "bob2.BPL", 32, 16, 5, debug_resource_bitmap_interleaved | debug_resource_bitmap_masked);
-	debug_register_palette(ColorPalette, "BackgroundImage.PAL", 32, 0);
+	debug_register_palette(ColorPalette, "Default.PAL", 32, 0);
 	debug_register_copperlist(copper1, "copper1", 1024, 0);
 	debug_register_copperlist(copper2, "copper2", sizeof(copper2), 0);
 
@@ -386,7 +385,7 @@ int main()
 	pCopFrameBuffer = copPtr;
 	const UBYTE* planes[planeCount];
 	for (int a = 0; a < planeCount; a++) {
-		planes[a]=(UBYTE*)BackgroundImage + lineSize * a;
+		planes[a] = (UBYTE*)(frontBuffer->m_pBufferDataPlane[a]);
 	}
 	copPtr = copSetPlanes(0, copPtr, planes, planeCount);
 
@@ -413,33 +412,26 @@ int main()
 
 	custom->intreq = (1<<INTB_VERTB); // Reset vbl req
 
+	BlitterObject bobs[] = { BlitterObject(Bob1, 32, 16, 5), BlitterObject(Bob2, 32, 16, 5) };
+
 	while (!MouseLeft()) {
-		WaitVbl();
+		WaitLine(300);
 
 		// Swap frame buffers for double buffering
-		UBYTE* tmp = frontBuffer;
+		FrameBuffer* tmp = frontBuffer;
 		frontBuffer = backBuffer;
 		backBuffer = tmp;
-		for (int a = 0; a < planeCount; a++) {
-			planes[a] = (UBYTE*)(frontBuffer + lineSize * a);
-		}
-		copSetPlanes(0, pCopFrameBuffer, planes, planeCount);
 
-		int f = frameCounter & 255;
+		// Set display to front buffer
+		for (int a = 0; a < frontBuffer->m_bitPlaneCount; a++) {
+			planes[a] = (UBYTE*)(frontBuffer->m_pBufferDataPlane[a]);
+		}
+		copSetPlanes(0, pCopFrameBuffer, planes, frontBuffer->m_bitPlaneCount);
 
 		// Clear entire screen - Takes duration of a full frame to clear 5 bitplanes! TODO: don't do this!
-		WaitBlit();
-		custom->bltcon0 = A_TO_D | DEST;
-		custom->bltcon1 = 0;
-		custom->bltadat = 0;
-		custom->bltdpt = (APTR)backBuffer;
-		custom->bltdmod = 0;
-		custom->bltafwm = custom->bltalwm = 0xffff;
-		const unsigned short screenWordSize = (320 * 256 * planeCount) / 16;
-		custom->bltsize = screenWordSize;
+		backBuffer->Clear();
 
 		// Blit some bobs
-		BlitterObject bobs[] = { BlitterObject(Bob1, 32, 16, 5), BlitterObject(Bob2, 32, 16, 5) };
 		for (short i = 0; i < 2; i++) {
 			const short x = 100 + (sinus40[(frameCounter + i) % sizeof(sinus40)] - 20) * (i + 1);
 			const short y = 80 + (sinus40[(frameCounter + i + sizeof(sinus40) / 4) % sizeof(sinus40)] - 20) * (i + 1);
@@ -447,6 +439,7 @@ int main()
 		}
 
 		// WinUAE debug overlay test
+		int f = frameCounter & 255;
 		debug_clear();
 		debug_filled_rect(f + 100, 200*2, f + 400, 220*2, 0x0000ff00); // 0x00RRGGBB
 		debug_rect(f + 90, 190*2, f + 400, 220*2, 0x000000ff); // 0x00RRGGBB
