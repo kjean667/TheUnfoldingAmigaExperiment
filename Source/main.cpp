@@ -29,6 +29,39 @@ static APTR SystemIrq;
  
 struct View *ActiView;
 
+
+namespace std {
+    using size_t = ULONG;
+}
+
+// C++ memory allocation for new/delete
+using namespace std;
+
+void * operator new (size_t sz) {
+    void * memoryBlock = (void *) AllocMem((ULONG) sz + 4, MEMF_ANY);
+    *((ULONG *) memoryBlock) = (ULONG) sz;
+    return (void *) (((BYTE *) memoryBlock) + 4);
+}
+
+void * operator new [] (size_t sz) {
+    void * memoryBlock = (void *) AllocMem((ULONG) sz + 4, MEMF_ANY);
+    *((ULONG *) memoryBlock) = (ULONG) sz;
+    return (void *) (((BYTE *) memoryBlock) + 4);
+}
+
+void operator delete (void * ptr) {
+    void * memoryBlock = (void *) ((((BYTE *) ptr) - 4));
+    ULONG byteSize = *((ULONG *) memoryBlock);
+    FreeMem(memoryBlock, byteSize);
+}
+
+void operator delete (void * ptr, size_t sz) {
+    void * memoryBlock = (void *) ((((BYTE *) ptr) - 4));
+    ULONG byteSize = *((ULONG *) memoryBlock);
+    FreeMem(memoryBlock, byteSize);
+}
+
+
 static APTR GetVBR(void)
 {
 	APTR vbr = 0;
@@ -412,7 +445,10 @@ int main()
 
 	custom->intreq = (1<<INTB_VERTB); // Reset vbl req
 
-	BlitterObject bobs[] = { BlitterObject(Bob1, 32, 16, 5), BlitterObject(Bob2, 32, 16, 5) };
+	frameBuffer1.Clear();
+	frameBuffer2.Clear();
+
+	BlitterObject bobs[] = { BlitterObject(Bob1, 32, 16, 5, true), BlitterObject(Bob2, 32, 16, 5, true) };
 
 	while (!MouseLeft()) {
 		WaitLine(300);
@@ -428,8 +464,10 @@ int main()
 		}
 		copSetPlanes(0, pCopFrameBuffer, planes, frontBuffer->m_bitPlaneCount);
 
-		// Clear entire screen - Takes duration of a full frame to clear 5 bitplanes! TODO: don't do this!
-		backBuffer->Clear();
+		// Restore the backbuffer from previously drawn bobs
+		for (short i = 1; i >= 0; i--) {
+			bobs[i].RestoreBackground();
+		}
 
 		// Blit some bobs
 		for (short i = 0; i < 2; i++) {
