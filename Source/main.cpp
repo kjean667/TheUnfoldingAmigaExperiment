@@ -448,10 +448,23 @@ int main()
 	frameBuffer1.Clear();
 	frameBuffer2.Clear();
 
-	BlitterObject bobs[] = { BlitterObject(Bob1, 32, 16, 5, true), BlitterObject(Bob2, 32, 16, 5, true) };
+	BlitterObject bobs[] = {
+		BlitterObject(Bob1, 32, 16, 5),
+		BlitterObject(Bob2, 32, 16, 5)
+	};
 
 	while (!MouseLeft()) {
 		WaitLine(300);
+
+		// Restore the backbuffer from previously drawn bobs
+		backBuffer->ClearDirtyRegions();
+
+		// Blit some bobs
+		for (short i = 0; i < 2; i++) {
+			const short x = 100 + (sinus40[(frameCounter + i) % sizeof(sinus40)] - 20) * (i + 1);
+			const short y = 80 + (sinus40[(frameCounter + i + sizeof(sinus40) / 4) % sizeof(sinus40)] - 20) * (i + 1);
+			bobs[i].DrawObject(backBuffer, x, y);
+		}
 
 		// Swap frame buffers for double buffering
 		FrameBuffer* tmp = frontBuffer;
@@ -464,24 +477,14 @@ int main()
 		}
 		copSetPlanes(0, pCopFrameBuffer, planes, frontBuffer->m_bitPlaneCount);
 
-		// Restore the backbuffer from previously drawn bobs
-		for (short i = 1; i >= 0; i--) {
-			bobs[i].RestoreBackground();
-		}
-
-		// Blit some bobs
-		for (short i = 0; i < 2; i++) {
-			const short x = 100 + (sinus40[(frameCounter + i) % sizeof(sinus40)] - 20) * (i + 1);
-			const short y = 80 + (sinus40[(frameCounter + i + sizeof(sinus40) / 4) % sizeof(sinus40)] - 20) * (i + 1);
-			bobs[i].DrawObject(backBuffer, x, y);
-		}
-
 		// WinUAE debug overlay test
+		/*
 		int f = frameCounter & 255;
 		debug_clear();
 		debug_filled_rect(f + 100, 200*2, f + 400, 220*2, 0x0000ff00); // 0x00RRGGBB
 		debug_rect(f + 90, 190*2, f + 400, 220*2, 0x000000ff); // 0x00RRGGBB
 		debug_text(f+ 130, 209*2, "This is a WinUAE debug overlay", 0x00ff00ff);
+		*/
 	}
 
 #ifdef MUSIC
