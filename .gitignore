@@ -45,5 +45,14 @@
 # Generated Amiga image files
 out
 obj
-*.bpl
-*.pal
+
+# C++ 20 modules
+gcm.cache
+
+# Seems like a good place to keep copyrighted stuff
+roms
+
+# Keep separate from repo
+MYTODO.txt
+
+

@@ -25,6 +25,7 @@ program = out/a
 OUT = $(program)
 CC = m68k-amiga-elf-gcc
 VASM = vasmm68k_mot
+KINGCON = Graphics/kingcon.exe
 
 ifdef WINDOWS
 	SDKDIR = $(abspath $(dir $(shell where $(CC)))..\m68k-amiga-elf\sys-include)
@@ -33,14 +34,35 @@ else
 endif
 
 CCFLAGS = -g -MP -MMD -m68000 -Ofast -nostdlib -Wextra -Wno-unused-function -Wno-volatile-register-var -fomit-frame-pointer -fno-tree-loop-distribution -flto -fwhole-program -fno-exceptions
-CPPFLAGS= $(CCFLAGS) -fno-rtti -fcoroutines -fno-use-cxa-atexit
+CPPFLAGS= $(CCFLAGS) -std=c++20 -fmodules-ts -fno-rtti -fcoroutines -fno-use-cxa-atexit
 ASFLAGS = -Wa,-g,--register-prefix-optional,-I$(SDKDIR),-D
 LDFLAGS = -Wl,--emit-relocs,-Ttext=0,-Map=$(OUT).map
 VASMFLAGS = -m68000 -Felf -opt-fconst -nowarn=62 -dwarf=3 -quiet -x -I. -I$(SDKDIR)
+ASSET_BITMAPS = \
+	out/Graphics/Default.BPL \
+	out/Graphics/coconut.BPL \
+	out/Graphics/splitcoconut.BPL \
+	out/Graphics/coconut-tree.BPL
+SOUND_ASSETS = Sound/coconut.p61
 
 all: $(OUT).exe
 
-$(OUT).exe: $(OUT).elf
+.PHONY: bitmap_assets
+bitmap_assets: out/graphics $(ASSET_BITMAPS)
+
+out/graphics:
+	-if not exist "$@" mkdir "$@"
+
+.PHONY: sound_assets
+sound_assets: $(SOUND_ASSETS)
+
+out/Graphics/Default.BPL: Graphics/Default.png
+	$(KINGCON) $^ $(basename $@) -Interleaved -Format=5 -RawPalette
+
+out/%.BPL: %.png
+	$(KINGCON) $^ $(basename $@) -Interleaved -Format=5 -Mask
+
+$(OUT).exe: bitmap_assets sound_assets $(OUT).elf
 	$(info Elf2Hunk $(program).exe)
 	@elf2hunk $(OUT).elf $(OUT).exe -s
 
@@ -53,9 +75,9 @@ $(OUT).elf: $(objects)
 clean:
 	$(info Cleaning...)
 ifdef WINDOWS
-	@del /q obj\* out\*
+	@rmdir /q /s obj out gcm.cache
 else
-	@$(RM) obj/* out/*
+	@$(RM) obj/* out/* gcm.cache/*
 endif
 
 -include $(objects:.o=.d)
@@ -79,3 +101,4 @@ $(vasm_objects): obj/%.o : %.asm
 	$(info Assembling $<)
 	if not exist "$(@D)" mkdir "$(@D)"
 	@$(VASM) $(VASMFLAGS) -o $@ $<
+

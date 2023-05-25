@@ -13,7 +13,7 @@
 #include "FrameBuffer.h"
 #include "BlitterObject.h"
 
-//#define MUSIC
+#undef MUSIC
 
 struct ExecBase *SysBase;
 static volatile struct Custom *custom;
@@ -197,9 +197,10 @@ __attribute__((always_inline)) inline short MouseLeft() {return !((*(volatile UB
 __attribute__((always_inline)) inline short MouseRight() {return !((*(volatile UWORD*)0xdff016)&(1<<10));}
 
 volatile short frameCounter = 0;
-INCBIN(ColorPalette, "Graphics/Default.PAL")
-INCBIN_CHIP(Bob1, "Graphics/bob1.BPL")
-INCBIN_CHIP(Bob2, "Graphics/bob2.BPL")
+INCBIN(ColorPalette, "out/Graphics/Default.PAL")
+INCBIN_CHIP(coconut, "out/Graphics/coconut.BPL")
+INCBIN_CHIP(splitcoconut, "out/Graphics/splitcoconut.BPL")
+INCBIN_CHIP(coconuttree, "out/Graphics/coconut-tree.BPL")
 
 // Put copper list into chip mem so we can use it without copying
 const UWORD copper2[] __attribute__((section (".MEMF_CHIP"))) = {
@@ -223,7 +224,7 @@ void* doynaxdepack(const void* input, void* output) { // returns end of output d
 	// Module Player - ThePlayer 6.1a: https://www.pouet.net/prod.php?which=19922
 	// The Player® 6.1A: Copyright © 1992-95 Jarno Paananen
 	INCBIN(player, "Sound/player610.6.no_cia.bin")
-	INCBIN_CHIP(module, "Sound/smallbeat.p61")
+	INCBIN_CHIP(module, "Sound/coconut.p61")
 
 	// Returns 0 if success, non-zero otherwise
 	int p61Init(const void* module)
@@ -321,7 +322,7 @@ static __attribute__((interrupt)) void interruptHandler()
 #ifdef MUSIC
 	p61Music();
 #endif
-	frameCounter++;
+	frameCounter += 1;
 }
 
 // Set up a 320x256 lowres display
@@ -354,8 +355,9 @@ int main()
 
 	// We will use the graphics library only to locate and restore the system copper list once we are through.
 	GfxBase = (struct GfxBase *)OpenLibrary((CONST_STRPTR)"graphics.library",0);
-	if (!GfxBase)
+	if (!GfxBase) {
 		Exit(0);
+	}
 
 	// Used for printing
 	DOSBase = (struct DosLibrary*)OpenLibrary((CONST_STRPTR)"dos.library", 0);
@@ -390,9 +392,10 @@ int main()
 	FrameBuffer* backBuffer = &frameBuffer2;
 
 	// Register graphics resources with WinUAE for nicer gfx debugger experience
-	debug_register_bitmap(Bob1, "bob1.BPL", 32, 16, 5, debug_resource_bitmap_interleaved | debug_resource_bitmap_masked);
-	debug_register_bitmap(Bob2, "bob2.BPL", 32, 16, 5, debug_resource_bitmap_interleaved | debug_resource_bitmap_masked);
-	debug_register_palette(ColorPalette, "Default.PAL", 32, 0);
+	debug_register_bitmap(coconut, "coconut.BPL", 32, 32, 5, debug_resource_bitmap_interleaved | debug_resource_bitmap_masked);
+	debug_register_bitmap(splitcoconut, "splitcoconut.BPL", 32, 32, 5, debug_resource_bitmap_interleaved | debug_resource_bitmap_masked);
+	debug_register_bitmap(coconuttree, "coconut-tree.BPL", 32, 64, 5, debug_resource_bitmap_interleaved | debug_resource_bitmap_masked);
+	debug_register_palette(ColorPalette, "Default.PAL", 1, 0);
 	debug_register_copperlist(copper1, "copper1", 1024, 0);
 	debug_register_copperlist(copper2, "copper2", sizeof(copper2), 0);
 
@@ -438,9 +441,10 @@ int main()
 	custom->dmacon = DMAF_SETCLR | DMAF_MASTER | DMAF_RASTER | DMAF_COPPER | DMAF_BLITTER;
 
 	SetInterruptHandler((APTR)interruptHandler);
-	custom->intena = INTF_SETCLR | INTF_INTEN | INTF_VERTB;
 #ifdef MUSIC
 	custom->intena = INTF_SETCLR | INTF_EXTER; // ThePlayer needs INTF_EXTER
+#else
+	custom->intena = INTF_SETCLR | INTF_INTEN | INTF_VERTB;
 #endif
 
 	custom->intreq = (1<<INTB_VERTB); // Reset vbl req
@@ -448,10 +452,11 @@ int main()
 	frameBuffer1.Clear();
 	frameBuffer2.Clear();
 
-	BlitterObject bobs[] = {
-		BlitterObject(Bob1, 32, 16, 5),
-		BlitterObject(Bob2, 32, 16, 5)
-	};
+	auto BOtree = BlitterObject(coconuttree, 32, 64, 5);
+	auto BOcoconut = BlitterObject(coconut, 32, 32, 5);
+	auto BOsplitcoconut = BlitterObject(splitcoconut, 32, 32, 5);
+
+	short coconutPosX = 35;
 
 	while (!MouseLeft()) {
 		WaitLine(300);
@@ -459,12 +464,32 @@ int main()
 		// Restore the backbuffer from previously drawn bobs
 		backBuffer->ClearDirtyRegions();
 
-		// Blit some bobs
-		for (short i = 0; i < 2; i++) {
-			const short x = 100 + (sinus40[(frameCounter + i) % sizeof(sinus40)] - 20) * (i + 1);
-			const short y = 80 + (sinus40[(frameCounter + i + sizeof(sinus40) / 4) % sizeof(sinus40)] - 20) * (i + 1);
-			bobs[i].DrawObject(backBuffer, x, y);
+
+		// (crude) animation
+
+		BOtree.DrawObject(backBuffer, 30, 100);
+
+		const short noofrebounds = 5;
+		const short xmax = 200;
+		auto sin40 = [](short x){ return sinus40[(x+sizeof(sinus40)/4)%sizeof(sinus40)];};
+
+		if (coconutPosX > 200) {
+			coconutPosX = 35;
 		}
+
+		const auto x = coconutPosX;
+		const auto y = 100 + sin40(noofrebounds * coconutPosX);
+
+		if (frameCounter % 3 == 0) {
+			coconutPosX += 1;
+		}
+
+		if (coconutPosX < 100) {
+			BOcoconut.DrawObject(backBuffer, x, y);
+		} else {
+			BOsplitcoconut.DrawObject(backBuffer, x, y);
+		}
+
 
 		// Swap frame buffers for double buffering
 		FrameBuffer* tmp = frontBuffer;

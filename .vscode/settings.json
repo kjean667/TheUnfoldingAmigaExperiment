@@ -1,10 +1,11 @@
 {
     "m68k.includePaths": [
-        "c:\\Users\\bwodok\\Documents\\Visual_Studio_Code\\vscode-amiga-debug\\bin\\win32\\opt\\m68k-amiga-elf\\sys-include"
+        "c:\\Users\\pelle\\.vscode\\extensions\\bartmanabyss.amiga-debug-1.7.2\\bin\\win32\\opt\\m68k-amiga-elf\\sys-include"
     ],
     "files.associations": {
         "gfxbase.h": "c",
         "exec.h": "c",
         "gcc8_c_support.h": "c"
-    }
+    },
+    "m68k.vasm.provideDiagnostics": false
 }

@@ -34,8 +34,10 @@ void BlitterObject::DrawObject(FrameBuffer *pFrameBuffer, UWORD x, UWORD y)
     custom->bltamod = (m_width - 16) >> 3;
     custom->bltapt = (APTR)((UBYTE *)m_pSourceData + (m_width >> 3));
     custom->bltbmod = (m_width - 16) >> 3;
-    custom->bltcpt = custom->bltdpt = pDestinationMemory;
-    custom->bltcmod = custom->bltdmod = destinationMemoryModulo;
+    custom->bltcpt = pDestinationMemory;
+    custom->bltdpt = pDestinationMemory;
+    custom->bltcmod = destinationMemoryModulo;
+    custom->bltdmod = destinationMemoryModulo;
     custom->bltafwm = 0xffff;
     custom->bltalwm = 0;
     custom->bltsize = m_bltSize;
