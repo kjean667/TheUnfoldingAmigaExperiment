@@ -12,6 +12,8 @@
 
 #include "FrameBuffer.h"
 #include "BlitterObject.h"
+#include "Copper.h"
+#include "MainView.h"
 
 #undef MUSIC
 
@@ -201,11 +203,6 @@ INCBIN(ColorPalette, "out/Graphics/Default.PAL")
 INCBIN_CHIP(coconut, "out/Graphics/coconut.BPL")
 INCBIN_CHIP(splitcoconut, "out/Graphics/splitcoconut.BPL")
 INCBIN_CHIP(coconuttree, "out/Graphics/coconut-tree.BPL")
-
-// Put copper list into chip mem so we can use it without copying
-const UWORD copper2[] __attribute__((section (".MEMF_CHIP"))) = {
-	0xffff, 0xfffe // end copper list
-};
 
 void* doynaxdepack(const void* input, void* output) { // returns end of output data, input needs to be 16-bit aligned!
 	register volatile const void* _a0 ASM("a0") = input;
@@ -397,7 +394,8 @@ int main()
 	debug_register_bitmap(coconuttree, "coconut-tree.BPL", 32, 64, 5, debug_resource_bitmap_interleaved | debug_resource_bitmap_masked);
 	debug_register_palette(ColorPalette, "Default.PAL", 1, 0);
 	debug_register_copperlist(copper1, "copper1", 1024, 0);
-	debug_register_copperlist(copper2, "copper2", sizeof(copper2), 0);
+
+	MainView mainView;
 
 	copPtr = screenScanDefault(copPtr);
 
@@ -430,12 +428,12 @@ int main()
 		copPtr = copSetColor(copPtr, a, ((USHORT*)ColorPalette)[a]);
 	}
 
-	// jump to copper2
+	// jump to the scene's copper
 	*copPtr++ = offsetof(struct Custom, copjmp2);
 	*copPtr++ = 0x7fff;
 
 	custom->cop1lc = (ULONG)copper1;
-	custom->cop2lc = (ULONG)copper2;
+	custom->cop2lc = (ULONG)mainView.GetCopperPtr();
 	custom->dmacon = DMAF_BLITTER; // Disable blitter dma for copjmp bug
 	custom->copjmp1 = 0x7fff; // Start coppper
 	custom->dmacon = DMAF_SETCLR | DMAF_MASTER | DMAF_RASTER | DMAF_COPPER | DMAF_BLITTER;
