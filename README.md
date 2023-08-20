@@ -12,3 +12,6 @@ This project is developed in Visual Studio Code on Windows.
 
 ## Notes
 * Must build twice on a clean build due to dependency issues.
+
+## Debugging
+In order to set breakpoints and debug the code, the `-Ofast` flag must be removed from `CCFLAGS` in the [Makefile](Makefile).
