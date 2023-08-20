@@ -23,6 +23,11 @@ UWORD* Copper::GetCopperPtr()
     return (USHORT*)m_pCopper;
 }
 
+UWORD* Copper::GetCopperWritePosPtr()
+{
+    return m_pCopperWritePos;
+}
+
 void Copper::WaitY(USHORT y)
 {
 	*m_pCopperWritePos++ = (y<<8)|6|1; // Bit 1 means wait. 6 means is an offset to make next copper instruction happend exactly at the start of the scanline, not before. @see https://jvaltane.kapsi.fi/amiga/howtocode/copper.html

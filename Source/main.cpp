@@ -198,7 +198,7 @@ void FreeSystem()
 __attribute__((always_inline)) inline short MouseLeft() {return !((*(volatile UBYTE*)0xbfe001)&64);}	
 __attribute__((always_inline)) inline short MouseRight() {return !((*(volatile UWORD*)0xdff016)&(1<<10));}
 
-volatile short frameCounter = 0;
+volatile ULONG frameCounter = 0;
 INCBIN(ColorPalette, "out/Graphics/Default.PAL")
 INCBIN_CHIP(coconut, "out/Graphics/coconut.BPL")
 INCBIN_CHIP(splitcoconut, "out/Graphics/splitcoconut.BPL")
@@ -499,6 +499,8 @@ int main()
 			planes[a] = (UBYTE*)(frontBuffer->m_pBufferDataPlane[a]);
 		}
 		copSetPlanes(0, pCopFrameBuffer, planes, frontBuffer->m_bitPlaneCount);
+
+		mainView.Update(frameCounter);
 
 		// WinUAE debug overlay test
 		/*

@@ -10,6 +10,7 @@ public:
     ~Copper();
 
     UWORD* GetCopperPtr();
+    UWORD* GetCopperWritePosPtr();
 
     void WaitXY(USHORT x, USHORT y);
     void WaitY(USHORT y);
