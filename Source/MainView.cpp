@@ -123,6 +123,178 @@ void MainView::SetupCopper()
 	}
 }
 
+static const UBYTE sinus0_5[] = {
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+};
+static const UBYTE sinus1[] = {
+    1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1
+};
+static const UBYTE sinus2[] = {
+    2,2,2,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,3,3,3,3,3,3,2,2,2,2,2,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,2,2
+};
+static const UBYTE sinus3[] = {
+    3,3,4,4,4,4,5,5,5,5,5,6,6,6,6,6,6,6,6,6,6,6,5,5,5,5,5,4,4,4,4,3,3,3,2,2,2,2,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,2,2,2,2,3
+};
+static const UBYTE sinus4[] = {
+    4,4,5,5,6,6,6,7,7,7,7,8,8,8,8,8,8,8,8,8,8,8,7,7,7,7,6,6,6,5,5,4,4,4,3,3,2,2,2,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,3,3,4
+};
+static const UBYTE sinus5[] = {
+    5,5,6,6,7,7,8,8,9,9,9,9,10,10,10,10,10,10,10,10,10,9,9,9,9,8,8,7,7,6,6,5,5,5,4,4,3,3,2,2,1,1,1,1,0,0,0,0,0,0,0,0,0,1,1,1,1,2,2,3,3,4,4,5
+};
+static const UBYTE sinus6[] = {
+    6,7,7,8,8,9,9,10,10,11,11,11,12,12,12,12,12,12,12,12,12,11,11,11,10,10,9,9,8,8,7,7,6,5,5,4,4,3,3,2,2,1,1,1,0,0,0,0,0,0,0,0,0,1,1,1,2,2,3,3,4,4,5,5
+};
+static const UBYTE sinus7[] = {
+    7,8,8,9,10,10,11,11,12,12,13,13,13,14,14,14,14,14,14,14,13,13,13,12,12,11,11,10,10,9,8,8,7,6,6,5,4,4,3,3,2,2,1,1,1,0,0,0,0,0,0,0,1,1,1,2,2,3,3,4,4,5,6,6
+};
+static const UBYTE sinus8[] = {
+    8,9,10,10,11,12,12,13,14,14,15,15,15,16,16,16,16,16,16,16,15,15,15,14,14,13,12,12,11,10,10,9,8,7,6,6,5,4,4,3,2,2,1,1,1,0,0,0,0,0,0,0,1,1,1,2,2,3,4,4,5,6,6,7
+};
+static const UBYTE sinus9[] = {
+    9,10,11,12,12,13,14,15,15,16,16,17,17,18,18,18,18,18,18,18,17,17,16,16,15,15,14,13,12,12,11,10,9,8,7,6,6,5,4,3,3,2,2,1,1,0,0,0,0,0,0,0,1,1,2,2,3,3,4,5,6,6,7,8
+};
+static const UBYTE sinus10[] = {
+    10,11,12,13,14,15,16,16,17,18,18,19,19,20,20,20,20,20,20,20,19,19,18,18,17,16,16,15,14,13,12,11,10,9,8,7,6,5,4,4,3,2,2,1,1,0,0,0,0,0,0,0,1,1,2,2,3,4,4,5,6,7,8,9
+};
+
+// Distance table for water animation for each raster line below the horizon
+static const UBYTE* waveSinuses[] = {
+sinus0_5,
+sinus0_5,
+sinus0_5,
+sinus0_5,
+sinus0_5,
+sinus0_5,
+sinus0_5,
+sinus0_5,
+sinus0_5,
+sinus1,
+sinus1,
+sinus1,
+sinus1,
+sinus1,
+sinus1,
+sinus1,
+sinus1,
+sinus1,
+sinus1,
+sinus1,
+sinus1,
+sinus2,
+sinus2,
+sinus2,
+sinus2,
+sinus2,
+sinus2,
+sinus2,
+sinus2,
+sinus2,
+sinus2,
+sinus2,
+sinus2,
+sinus2,
+sinus2,
+sinus2,
+sinus2,
+sinus2,
+sinus3,
+sinus3,
+sinus3,
+sinus3,
+sinus3,
+sinus3,
+sinus3,
+sinus3,
+sinus3,
+sinus3,
+sinus3,
+sinus3,
+sinus3,
+sinus3,
+sinus3,
+sinus4,
+sinus4,
+sinus4,
+sinus4,
+sinus4,
+sinus4,
+sinus4,
+sinus4,
+sinus4,
+sinus4,
+sinus4,
+sinus4,
+sinus4,
+sinus4,
+sinus5,
+sinus5,
+sinus5,
+sinus5,
+sinus5,
+sinus5,
+sinus5,
+sinus5,
+sinus5,
+sinus5,
+sinus5,
+sinus5,
+sinus5,
+sinus6,
+sinus6,
+sinus6,
+sinus6,
+sinus6,
+sinus6,
+sinus6,
+sinus6,
+sinus6,
+sinus6,
+sinus6,
+sinus6,
+sinus7,
+sinus7,
+sinus7,
+sinus7,
+sinus7,
+sinus7,
+sinus7,
+sinus7,
+sinus7,
+sinus7,
+sinus7,
+sinus7,
+sinus8,
+sinus8,
+sinus8,
+sinus8,
+sinus8,
+sinus8,
+sinus8,
+sinus8,
+sinus8,
+sinus8,
+sinus8,
+sinus9,
+sinus9,
+sinus9,
+sinus9,
+sinus9,
+sinus9,
+sinus9,
+sinus9,
+sinus9,
+sinus9,
+sinus9,
+sinus10,
+sinus10,
+sinus10,
+sinus10,
+sinus10,
+sinus10,
+sinus10,
+sinus10
+};
+
 void MainView::UpdateCopper(ULONG frameNr)
 {
     // Animate which dome to show
@@ -139,9 +311,19 @@ void MainView::UpdateCopper(ULONG frameNr)
 
     // Update copper colors for the dome
     const UWORD* domeColors = g_domes[m_currentDomeIndex].dome;
+    UWORD* domeColorPtr = (UWORD*)domeColors;
     UWORD** copperPtr = m_copperColorPtr; 
-    for (int y = 0; y < NumScanLines; y++)
+    int y = 0;
+    for (; y < 149; y++)
     {
-        **copperPtr++ = *domeColors++;
+        **copperPtr++ = *domeColorPtr++;
+    }
+    // Apply water wave animation on the bottom half of the screen
+    UBYTE** waveSinusPtr = (UBYTE**)waveSinuses;
+    for (; y < NumScanLines; y++)
+    {
+        UBYTE sin = (*waveSinusPtr)[(frameNr + y) % sizeof(sinus1)];
+        waveSinusPtr++;
+        **copperPtr++ = domeColors[y - sin];
     }
 }
