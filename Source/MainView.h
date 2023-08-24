@@ -5,13 +5,7 @@
 
 #include "Copper.h"
 
-struct TimestampedDome
-{
-    // A pointer to UWORD colors for each raster line
-    const UWORD* dome;
-    // The frame number when the dome shall be shown
-    ULONG tick;
-};
+#include "SkyDome.h"
 
 class MainView
 {
@@ -31,9 +25,7 @@ private:
 	Copper m_copper;
 
     static const int NumScanLines = 283;
-    /// A list of pointers into the copper where the background colors are defined for each raster line
-    UWORD* m_copperColorPtr[NumScanLines];
-    int m_currentDomeIndex = 0;
+    SkyDome m_skyDome;
 };
 
 
