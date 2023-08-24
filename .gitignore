@@ -42,6 +42,10 @@
 *.idb
 *.pdb
 
+# Compiler-generated folders
+.vs
+bin
+
 # Generated Amiga image files
 out
 obj
