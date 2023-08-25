@@ -15,10 +15,10 @@
 #include "Copper.h"
 #include "MainView.h"
 
-#undef MUSIC
+#define MUSIC
 
-struct ExecBase *SysBase;
-static volatile struct Custom *custom;
+struct ExecBase *SysBase {*((struct ExecBase**)4UL)};
+static volatile struct Custom *custom {(struct Custom*)0xdff000};
 struct DosLibrary *DOSBase;
 struct GfxBase *GfxBase;
 
@@ -30,7 +30,6 @@ static volatile APTR VBR = 0;
 static APTR SystemIrq;
  
 struct View *ActiView;
-
 
 namespace std {
     using size_t = ULONG;
@@ -118,6 +117,7 @@ void WaitLine(USHORT line)
 	}
 }
 
+// FIXME; use this instead of WaitBlit()? Otherwise unused.
 __attribute__((always_inline)) inline void WaitBlt()
 {
 	UWORD tst = *(volatile UWORD*)&custom->dmaconr; // for compatiblity a1000
@@ -204,6 +204,7 @@ INCBIN_CHIP(coconut, "out/Graphics/coconut.BPL")
 INCBIN_CHIP(splitcoconut, "out/Graphics/splitcoconut.BPL")
 INCBIN_CHIP(coconuttree, "out/Graphics/coconut-tree.BPL")
 
+// FIXME: not used
 void* doynaxdepack(const void* input, void* output) { // returns end of output data, input needs to be 16-bit aligned!
 	register volatile const void* _a0 ASM("a0") = input;
 	register volatile       void* _a1 ASM("a1") = output;
@@ -218,54 +219,82 @@ void* doynaxdepack(const void* input, void* output) { // returns end of output d
 }
 
 #ifdef MUSIC
-	// Module Player - ThePlayer 6.1a: https://www.pouet.net/prod.php?which=19922
-	// The Player® 6.1A: Copyright © 1992-95 Jarno Paananen
-	INCBIN(player, "Sound/player610.6.no_cia.bin")
-	INCBIN_CHIP(module, "Sound/coconut.p61")
+	INCBIN_CHIP(player, "Sound/lightspeedplayer-mod.bin")
+	INCBIN_CHIP(playerbank, "Sound/coconut.lsbank")
+	INCBIN_CHIP(playermusic, "Sound/coconut.lsmusic")
 
-	// Returns 0 if success, non-zero otherwise
-	int p61Init(const void* module)
+	struct LSP_MusicInit_Ret {
+		UWORD bpm;
+		unsigned int musicLenTickCount;
+	};
+
+	// For __asm syntax, see https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html
+
+	LSP_MusicInit_Ret LSP_MusicInit(volatile const void *dmacon)
 	{
-		register volatile const void* _a0 ASM("a0") = module;
-		register volatile const void* _a1 ASM("a1") = NULL;
-		register volatile const void* _a2 ASM("a2") = NULL;
+		register volatile const void* _a0 ASM("a0") = playermusic;
+		register volatile const void* _a1 ASM("a1") = playerbank;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpointer-arith"
+		register volatile const void* _a2 ASM("a2") = dmacon+1; // low byte address (odd)
+#pragma GCC diagnostic pop
 		register volatile const void* _a3 ASM("a3") = player;
 		register                int   _d0 ASM("d0"); // return value
 		__asm volatile (
 			"movem.l %%d1-%%d7/%%a4-%%a6,-(%%sp)\n"
 			"jsr 0(%%a3)\n"
 			"movem.l (%%sp)+,%%d1-%%d7/%%a4-%%a6"
-		: "=r" (_d0), "+rf"(_a0), "+rf"(_a1), "+rf"(_a2), "+rf"(_a3)
+		: "=rd" (_d0), "+ra"(_a0)
+		: 
+		: "memory");
+		return {
+			.bpm = (UWORD)( *(UWORD*)_a0 & 0xffff),
+			.musicLenTickCount = (unsigned int)_d0
+		};
+	}
+
+	void LSP_MusicPlayTick()
+	{
+		register volatile const void* _a5 ASM("a5") = player;
+		register volatile const void* _a6 ASM("a6") = (void*)0xdff0a0;
+		__asm volatile (
+			"movem.l %%d0-%%d2/%%a0-%%a4,-(%%sp)\n"
+			"jsr 4(%%a5)\n"
+			"movem.l (%%sp)+,%%d0-%%d2/%%a0-%%a4"
+		: 
 		:
-		: "cc", "memory");
+		: "memory");
+	}
+
+	void LSP_MusicSetPos(int pos)
+	{
+		register volatile const void* _a4 ASM("a4") = player;
+		register volatile const void* _d0 ASM("d0") = (void*)pos;
+		__asm volatile (
+			"movem.l %%d1/%%a0-%%a3,-(%%sp)\n"
+			"jsr 8(%%a4)\n"
+			"movem.l (%%sp)+,%%d1/%%a0-%%a3"
+		: 
+		:
+		: "memory");
+	}
+
+	int LSP_MusicGetPos()
+	{
+		register volatile const void* _a3 ASM("a3") = player;
+		register                int   _d0 ASM("d0"); // return value
+		__asm volatile (
+			"jsr 12(%%a3)"
+		: "=rd"(_d0)
+		:
+		: "memory");
 		return _d0;
 	}
 
-	void p61Music()
-	{
-		register volatile const void* _a3 ASM("a3") = player;
-		register volatile const void* _a6 ASM("a6") = (void*)0xdff000;
-		__asm volatile (
-			"movem.l %%d0-%%d7/%%a0-%%a2/%%a4-%%a5,-(%%sp)\n"
-			"jsr 4(%%a3)\n"
-			"movem.l (%%sp)+,%%d0-%%d7/%%a0-%%a2/%%a4-%%a5"
-		: "+rf"(_a3), "+rf"(_a6)
-		:
-		: "cc", "memory");
+	void LSP_MusicEnd() {
+		// TODO. Nothing in LightSpeedPlayer.asm
 	}
 
-	void p61End()
-	{
-		register volatile const void* _a3 ASM("a3") = player;
-		register volatile const void* _a6 ASM("a6") = (void*)0xdff000;
-		__asm volatile (
-			"movem.l %%d0-%%d1/%%a0-%%a1,-(%%sp)\n"
-			"jsr 8(%%a3)\n"
-			"movem.l (%%sp)+,%%d0-%%d1/%%a0-%%a1"
-		: "+rf"(_a3), "+rf"(_a6)
-		:
-		: "cc", "memory");
-	}
 #endif //MUSIC
 
 __attribute__((always_inline)) inline USHORT* copSetPlanes(UBYTE bplPtrStart, USHORT* copListEnd, const UBYTE **planes, int numPlanes)
@@ -317,8 +346,9 @@ static __attribute__((interrupt)) void interruptHandler()
 	custom->intreq = (1<<INTB_VERTB); // Reset vbl req. twice for a4000 bug.
 
 #ifdef MUSIC
-	p61Music();
+	LSP_MusicPlayTick();
 #endif
+
 	frameCounter += 1;
 }
 
@@ -347,9 +377,6 @@ __attribute__((always_inline)) inline USHORT* screenScanDefault(USHORT* copListE
 
 int main()
 {
-	SysBase = *((struct ExecBase**)4UL);
-	custom = (struct Custom*)0xdff000;
-
 	// We will use the graphics library only to locate and restore the system copper list once we are through.
 	GfxBase = (struct GfxBase *)OpenLibrary((CONST_STRPTR)"graphics.library",0);
 	if (!GfxBase) {
@@ -365,13 +392,6 @@ int main()
 	Write(Output(), (APTR)"Hello console!\n", 15);
 	Delay(50);
 
-	warpmode(1);
-
-#ifdef MUSIC
-	if (p61Init(module) != 0) {
-		KPrintF("p61Init failed!\n");
-	}
-#endif
 	warpmode(0);
 
 	TakeSystem();
@@ -395,9 +415,15 @@ int main()
 	debug_register_palette(ColorPalette, "Default.PAL", 1, 0);
 	debug_register_copperlist(copper1, "copper1", 1024, 0);
 
-	MainView mainView;
-
 	copPtr = screenScanDefault(copPtr);
+
+#ifdef MUSIC
+	*copPtr++ = offsetof(struct Custom, dmacon);
+	USHORT *dmaConPatch = copPtr;
+	*copPtr++ = DMAF_SETCLR;
+
+	LSP_MusicInit(dmaConPatch);
+#endif
 
 	// Enable bitplanes
 	*copPtr++ = offsetof(struct Custom, bplcon0);
@@ -432,20 +458,20 @@ int main()
 	*copPtr++ = offsetof(struct Custom, copjmp2);
 	*copPtr++ = 0x7fff;
 
+	MainView mainView;
+
 	custom->cop1lc = (ULONG)copper1;
 	custom->cop2lc = (ULONG)mainView.GetCopperPtr();
 	custom->dmacon = DMAF_BLITTER; // Disable blitter dma for copjmp bug
-	custom->copjmp1 = 0x7fff; // Start coppper
+	custom->copjmp1 = 0x7fff; // Start copper
 	custom->dmacon = DMAF_SETCLR | DMAF_MASTER | DMAF_RASTER | DMAF_COPPER | DMAF_BLITTER;
 
 	SetInterruptHandler((APTR)interruptHandler);
-#ifdef MUSIC
-	custom->intena = INTF_SETCLR | INTF_EXTER; // ThePlayer needs INTF_EXTER
-#else
-	custom->intena = INTF_SETCLR | INTF_INTEN | INTF_VERTB;
-#endif
 
-	custom->intreq = (1<<INTB_VERTB); // Reset vbl req
+	warpmode(0);
+	
+	custom->intena = INTF_SETCLR | INTF_INTEN | INTF_VERTB;
+    custom->intreq = (1<<INTB_VERTB); // Reset vbl req
 
 	frameBuffer1.Clear();
 	frameBuffer2.Clear();
@@ -488,7 +514,6 @@ int main()
 			BOsplitcoconut.DrawObject(backBuffer, x, y);
 		}
 
-
 		// Swap frame buffers for double buffering
 		FrameBuffer* tmp = frontBuffer;
 		frontBuffer = backBuffer;
@@ -502,18 +527,18 @@ int main()
 
 		mainView.Update(frameCounter);
 
+#if 0
 		// WinUAE debug overlay test
-		/*
 		int f = frameCounter & 255;
 		debug_clear();
 		debug_filled_rect(f + 100, 200*2, f + 400, 220*2, 0x0000ff00); // 0x00RRGGBB
 		debug_rect(f + 90, 190*2, f + 400, 220*2, 0x000000ff); // 0x00RRGGBB
 		debug_text(f+ 130, 209*2, "This is a WinUAE debug overlay", 0x00ff00ff);
-		*/
+#endif
 	}
 
 #ifdef MUSIC
-	p61End();
+	LSP_MusicEnd();
 #endif
 
 	// END

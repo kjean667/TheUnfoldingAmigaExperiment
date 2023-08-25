@@ -33,7 +33,7 @@ else
 	SDKDIR = $(abspath $(dir $(shell which $(CC)))../m68k-amiga-elf/sys-include)
 endif
 
-CCFLAGS = -g -MP -MMD -m68000 -Ofast -nostdlib -Wextra -Wno-unused-function -Wno-volatile-register-var -fomit-frame-pointer -fno-tree-loop-distribution -flto -fwhole-program -fno-exceptions
+CCFLAGS = -g -MP -MMD -m68000 -O0 -nostdlib -Wextra -Wno-unused-function -Wno-volatile-register-var -fomit-frame-pointer -fno-tree-loop-distribution -flto -fwhole-program -fno-exceptions
 CPPFLAGS= $(CCFLAGS) -std=c++20 -fmodules-ts -fno-rtti -fcoroutines -fno-use-cxa-atexit
 ASFLAGS = -Wa,-g,--register-prefix-optional,-I$(SDKDIR),-D
 LDFLAGS = -Wl,--emit-relocs,-Ttext=0,-Map=$(OUT).map
@@ -43,7 +43,7 @@ ASSET_BITMAPS = \
 	out/Graphics/coconut.BPL \
 	out/Graphics/splitcoconut.BPL \
 	out/Graphics/coconut-tree.BPL
-SOUND_ASSETS = Sound/coconut.p61
+SOUND_ASSETS = Sound/coconut.lsbank Sound/coconut.lsmusic
 
 all: $(OUT).exe
 
@@ -55,6 +55,7 @@ out/graphics:
 
 .PHONY: sound_assets
 sound_assets: $(SOUND_ASSETS)
+# NOP, placeholder for future operations
 
 out/Graphics/Default.BPL: Graphics/Default.png
 	$(KINGCON) $^ $(basename $@) -Interleaved -Format=5 -RawPalette
