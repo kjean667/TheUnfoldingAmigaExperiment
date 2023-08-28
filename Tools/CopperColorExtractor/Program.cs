@@ -1,5 +1,8 @@
 ﻿using System.CommandLine;
 using System.Drawing;
+using System.Runtime.Versioning;
+
+[assembly: SupportedOSPlatform("windows")]
 
 // Parse command line
 
@@ -46,14 +49,30 @@ if (inputImage.Exists)
 
     // Convert all colors in the first column (X=0) of the input image
     using var image = new Bitmap(fileStream);
+    int colorErrorR = 0;
+    int colorErrorG = 0;
+    int colorErrorB = 0;
     for (int y = 0; y < image.Height; y++)
     {
         Color pixelColor = image.GetPixel(0, y);
-        var amigaColorR = pixelColor.R >> 4;
-        var amigaColorG = pixelColor.G >> 4;
-        var amigaColorB = pixelColor.B >> 4;
+
+        // Compensate for the color error from the previous line, i.e. perform dithering
+        Color compensatedPixelColor = Color.FromArgb(
+            Math.Max(0, Math.Min(pixelColor.R + colorErrorR, 255)),
+            Math.Max(0, Math.Min(pixelColor.G + colorErrorG, 255)),
+            Math.Max(0, Math.Min(pixelColor.B + colorErrorB, 255))
+        );
+
+        var amigaColorR = compensatedPixelColor.R >> 4;
+        var amigaColorG = compensatedPixelColor.G >> 4;
+        var amigaColorB = compensatedPixelColor.B >> 4;
         var amigaColor = (ushort)(amigaColorR << 8 | amigaColorG << 4 | amigaColorB);
         Console.WriteLine($"Input: {pixelColor} Output: [R={amigaColorR}, G={amigaColorG}, B={amigaColorB}] Copper: {amigaColor:X4}");
+
+        // Calculate the color error between the wanted color and the color presented on the Amiga
+        colorErrorR = compensatedPixelColor.R - (amigaColorR << 4 | 0x0f);
+        colorErrorG = compensatedPixelColor.G - (amigaColorG << 4 | 0x0f);
+        colorErrorB = compensatedPixelColor.B - (amigaColorB << 4 | 0x0f);
 
         // Write the Amiga color to the output file
         if (outputStream != null)
