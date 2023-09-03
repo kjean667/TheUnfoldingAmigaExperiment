@@ -16,11 +16,23 @@ INCBIN(SkyDome0100, "Graphics/SkyDome/SkyDome_01.00.bin")
 INCBIN(SkyDome0200, "Graphics/SkyDome/SkyDome_02.00.bin")
 INCBIN(SkyDome0300, "Graphics/SkyDome/SkyDome_03.00.bin")
 INCBIN(SkyDome0400, "Graphics/SkyDome/SkyDome_04.00.bin")
+INCBIN(SkyDome0405, "Graphics/SkyDome/SkyDome_04.05.bin")
+INCBIN(SkyDome0410, "Graphics/SkyDome/SkyDome_04.10.bin")
 INCBIN(SkyDome0415, "Graphics/SkyDome/SkyDome_04.15.bin")
+INCBIN(SkyDome0420, "Graphics/SkyDome/SkyDome_04.20.bin")
+INCBIN(SkyDome0425, "Graphics/SkyDome/SkyDome_04.25.bin")
 INCBIN(SkyDome0430, "Graphics/SkyDome/SkyDome_04.30.bin")
+INCBIN(SkyDome0435, "Graphics/SkyDome/SkyDome_04.35.bin")
+INCBIN(SkyDome0440, "Graphics/SkyDome/SkyDome_04.40.bin")
 INCBIN(SkyDome0445, "Graphics/SkyDome/SkyDome_04.45.bin")
+INCBIN(SkyDome0450, "Graphics/SkyDome/SkyDome_04.50.bin")
+INCBIN(SkyDome0455, "Graphics/SkyDome/SkyDome_04.55.bin")
 INCBIN(SkyDome0500, "Graphics/SkyDome/SkyDome_05.00.bin")
+INCBIN(SkyDome0505, "Graphics/SkyDome/SkyDome_05.05.bin")
+INCBIN(SkyDome0510, "Graphics/SkyDome/SkyDome_05.10.bin")
 INCBIN(SkyDome0515, "Graphics/SkyDome/SkyDome_05.15.bin")
+INCBIN(SkyDome0520, "Graphics/SkyDome/SkyDome_05.20.bin")
+INCBIN(SkyDome0525, "Graphics/SkyDome/SkyDome_05.25.bin")
 INCBIN(SkyDome0530, "Graphics/SkyDome/SkyDome_05.30.bin")
 INCBIN(SkyDome0545, "Graphics/SkyDome/SkyDome_05.45.bin")
 INCBIN(SkyDome0600, "Graphics/SkyDome/SkyDome_06.00.bin")
@@ -40,10 +52,20 @@ INCBIN(SkyDome1815, "Graphics/SkyDome/SkyDome_18.15.bin")
 INCBIN(SkyDome1830, "Graphics/SkyDome/SkyDome_18.30.bin")
 INCBIN(SkyDome1845, "Graphics/SkyDome/SkyDome_18.45.bin")
 INCBIN(SkyDome1900, "Graphics/SkyDome/SkyDome_19.00.bin")
+INCBIN(SkyDome1905, "Graphics/SkyDome/SkyDome_19.05.bin")
+INCBIN(SkyDome1910, "Graphics/SkyDome/SkyDome_19.10.bin")
 INCBIN(SkyDome1915, "Graphics/SkyDome/SkyDome_19.15.bin")
+INCBIN(SkyDome1920, "Graphics/SkyDome/SkyDome_19.20.bin")
+INCBIN(SkyDome1925, "Graphics/SkyDome/SkyDome_19.25.bin")
 INCBIN(SkyDome1930, "Graphics/SkyDome/SkyDome_19.30.bin")
+INCBIN(SkyDome1935, "Graphics/SkyDome/SkyDome_19.35.bin")
+INCBIN(SkyDome1940, "Graphics/SkyDome/SkyDome_19.40.bin")
 INCBIN(SkyDome1945, "Graphics/SkyDome/SkyDome_19.45.bin")
+INCBIN(SkyDome1950, "Graphics/SkyDome/SkyDome_19.50.bin")
+INCBIN(SkyDome1955, "Graphics/SkyDome/SkyDome_19.55.bin")
 INCBIN(SkyDome2000, "Graphics/SkyDome/SkyDome_20.00.bin")
+INCBIN(SkyDome2005, "Graphics/SkyDome/SkyDome_20.05.bin")
+INCBIN(SkyDome2010, "Graphics/SkyDome/SkyDome_20.10.bin")
 INCBIN(SkyDome2015, "Graphics/SkyDome/SkyDome_20.15.bin")
 INCBIN(SkyDome2030, "Graphics/SkyDome/SkyDome_20.30.bin")
 INCBIN(SkyDome2200, "Graphics/SkyDome/SkyDome_22.00.bin")
@@ -58,11 +80,23 @@ static const struct TimestampedDome g_domes[] = {
     {(UWORD*)SkyDome0200, 2*60*60*FPS/AnimationScale},
     {(UWORD*)SkyDome0300, 3*60*60*FPS/AnimationScale},
     {(UWORD*)SkyDome0400, 4*60*60*FPS/AnimationScale},
+    {(UWORD*)SkyDome0405, (4*60*60*FPS + 5*60*FPS)/AnimationScale},
+    {(UWORD*)SkyDome0410, (4*60*60*FPS + 10*60*FPS)/AnimationScale},
     {(UWORD*)SkyDome0415, (4*60*60*FPS + 15*60*FPS)/AnimationScale},
+    {(UWORD*)SkyDome0420, (4*60*60*FPS + 20*60*FPS)/AnimationScale},
+    {(UWORD*)SkyDome0425, (4*60*60*FPS + 25*60*FPS)/AnimationScale},
     {(UWORD*)SkyDome0430, (4*60*60*FPS + 30*60*FPS)/AnimationScale},
+    {(UWORD*)SkyDome0435, (4*60*60*FPS + 35*60*FPS)/AnimationScale},
+    {(UWORD*)SkyDome0440, (4*60*60*FPS + 40*60*FPS)/AnimationScale},
     {(UWORD*)SkyDome0445, (4*60*60*FPS + 45*60*FPS)/AnimationScale},
+    {(UWORD*)SkyDome0450, (4*60*60*FPS + 50*60*FPS)/AnimationScale},
+    {(UWORD*)SkyDome0455, (4*60*60*FPS + 55*60*FPS)/AnimationScale},
     {(UWORD*)SkyDome0500, 5*60*60*FPS/AnimationScale},
+    {(UWORD*)SkyDome0505, (5*60*60*FPS + 5*60*FPS)/AnimationScale},
+    {(UWORD*)SkyDome0510, (5*60*60*FPS + 10*60*FPS)/AnimationScale},
     {(UWORD*)SkyDome0515, (5*60*60*FPS + 15*60*FPS)/AnimationScale},
+    {(UWORD*)SkyDome0520, (5*60*60*FPS + 20*60*FPS)/AnimationScale},
+    {(UWORD*)SkyDome0525, (5*60*60*FPS + 25*60*FPS)/AnimationScale},
     {(UWORD*)SkyDome0530, (5*60*60*FPS + 30*60*FPS)/AnimationScale},
     {(UWORD*)SkyDome0545, (5*60*60*FPS + 45*60*FPS)/AnimationScale},
     {(UWORD*)SkyDome0600, 6*60*60*FPS/AnimationScale},
@@ -82,10 +116,20 @@ static const struct TimestampedDome g_domes[] = {
     {(UWORD*)SkyDome1830, (18*60*60*FPS + 30*60*FPS)/AnimationScale},
     {(UWORD*)SkyDome1845, (18*60*60*FPS + 45*60*FPS)/AnimationScale},
     {(UWORD*)SkyDome1900, 19*60*60*FPS/AnimationScale},
+    {(UWORD*)SkyDome1905, (19*60*60*FPS + 5*60*FPS)/AnimationScale},
+    {(UWORD*)SkyDome1910, (19*60*60*FPS + 10*60*FPS)/AnimationScale},
     {(UWORD*)SkyDome1915, (19*60*60*FPS + 15*60*FPS)/AnimationScale},
+    {(UWORD*)SkyDome1920, (19*60*60*FPS + 20*60*FPS)/AnimationScale},
+    {(UWORD*)SkyDome1925, (19*60*60*FPS + 25*60*FPS)/AnimationScale},
     {(UWORD*)SkyDome1930, (19*60*60*FPS + 30*60*FPS)/AnimationScale},
+    {(UWORD*)SkyDome1935, (19*60*60*FPS + 35*60*FPS)/AnimationScale},
+    {(UWORD*)SkyDome1940, (19*60*60*FPS + 40*60*FPS)/AnimationScale},
     {(UWORD*)SkyDome1945, (19*60*60*FPS + 45*60*FPS)/AnimationScale},
+    {(UWORD*)SkyDome1950, (19*60*60*FPS + 50*60*FPS)/AnimationScale},
+    {(UWORD*)SkyDome1955, (19*60*60*FPS + 55*60*FPS)/AnimationScale},
     {(UWORD*)SkyDome2000, 20*60*60*FPS/AnimationScale},
+    {(UWORD*)SkyDome2005, (20*60*60*FPS + 5*60*FPS)/AnimationScale},
+    {(UWORD*)SkyDome2010, (20*60*60*FPS + 10*60*FPS)/AnimationScale},
     {(UWORD*)SkyDome2015, (20*60*60*FPS + 15*60*FPS)/AnimationScale},
     {(UWORD*)SkyDome2030, (20*60*60*FPS + 30*60*FPS)/AnimationScale},
     {(UWORD*)SkyDome2200, 22*60*60*FPS/AnimationScale},
