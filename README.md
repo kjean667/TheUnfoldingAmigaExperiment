@@ -2,7 +2,7 @@
 
 ## TODOs / future modifications
 - LSPlayer sound library is compiled on an Amiga. Consider compiling using the host toolchain instead.
-  Either inline __asm in or some other assembler. Much nicer than having the lightspeedplayer-mod.bin file from the Amiga.
+  Either inline __asm in or an .S-file. Much nicer than having the lightspeedplayer-mod.bin file from the Amiga.
 
 ## Development environment
 
@@ -28,6 +28,9 @@ Added jump table at the beginning of the source that is used by the C-code.
 	JT_LSP_MusicGetPos:		bra.w LSP_MusicGetPos
 
 MOD file can be converted using ```.\LSPConvert.exe .\coconut.mod -shrink``` to get the .lsbank and .lsmusic files.
+
+The coconut.mod actually contains two incorrect samples (off tune) as compared what's intended, but it sounds a little funny so
+it's left as-is and can be changed.
 
 ## Debugging
 In order to set breakpoints and debug the code, the `-Ofast` flag must be removed from `CCFLAGS` in the [Makefile](Makefile).

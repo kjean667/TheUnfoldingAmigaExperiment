@@ -1,199 +1,13 @@
-#include "support/gcc8_c_support.h"
-#include <proto/exec.h>
-#include <proto/dos.h>
-#include <proto/graphics.h>
-#include <graphics/gfxbase.h>
-#include <graphics/view.h>
-#include <exec/execbase.h>
-#include <graphics/gfxmacros.h>
-#include <hardware/custom.h>
-#include <hardware/dmabits.h>
-#include <hardware/intbits.h>
-
+#include "AmigaSystem.hpp"
 #include "FrameBuffer.h"
 #include "BlitterObject.h"
 #include "Copper.h"
 #include "MainView.h"
+#include "Music.hpp"
 
-#define MUSIC
-
-struct ExecBase *SysBase {*((struct ExecBase**)4UL)};
-static volatile struct Custom *custom {(struct Custom*)0xdff000};
-struct DosLibrary *DOSBase;
-struct GfxBase *GfxBase;
-
-// Backup
-static UWORD SystemInts;
-static UWORD SystemDMA;
-static UWORD SystemADKCON;
-static volatile APTR VBR = 0;
-static APTR SystemIrq;
- 
-struct View *ActiView;
-
-namespace std {
-    using size_t = ULONG;
-}
-
-// C++ memory allocation for new/delete
-using namespace std;
-
-void * operator new (size_t sz) {
-    void * memoryBlock = (void *) AllocMem((ULONG) sz + 4, MEMF_ANY);
-    *((ULONG *) memoryBlock) = (ULONG) sz;
-    return (void *) (((BYTE *) memoryBlock) + 4);
-}
-
-void * operator new [] (size_t sz) {
-    void * memoryBlock = (void *) AllocMem((ULONG) sz + 4, MEMF_ANY);
-    *((ULONG *) memoryBlock) = (ULONG) sz;
-    return (void *) (((BYTE *) memoryBlock) + 4);
-}
-
-void operator delete (void * ptr) {
-    void * memoryBlock = (void *) ((((BYTE *) ptr) - 4));
-    ULONG byteSize = *((ULONG *) memoryBlock);
-    FreeMem(memoryBlock, byteSize);
-}
-
-void operator delete (void * ptr, size_t sz) {
-    void * memoryBlock = (void *) ((((BYTE *) ptr) - 4));
-    ULONG byteSize = *((ULONG *) memoryBlock);
-    FreeMem(memoryBlock, byteSize);
-}
-
-
-static APTR GetVBR(void)
-{
-	APTR vbr = 0;
-	UWORD getvbr[] = { 0x4e7a, 0x0801, 0x4e73 }; // MOVEC.L VBR,D0 RTE
-
-	if (SysBase->AttnFlags & AFF_68010) {
-		vbr = (APTR)Supervisor((ULONG (*)())getvbr);
-	}
-
-	return vbr;
-}
-
-void SetInterruptHandler(APTR interrupt)
-{
-	*(volatile APTR*)(((UBYTE*)VBR)+0x6c) = interrupt;
-}
-
-APTR GetInterruptHandler()
-{
-	return *(volatile APTR*)(((UBYTE*)VBR)+0x6c);
-}
-
-// vblank begins at vpos 312 hpos 1 and ends at vpos 25 hpos 1
-// vsync begins at line 2 hpos 132 and ends at vpos 5 hpos 18 
-void WaitVbl()
-{
-	debug_start_idle();
-	while (1) {
-		volatile ULONG vpos = *(volatile ULONG*)0xDFF004;
-		vpos &= 0x1ff00;
-		if (vpos != (311<<8)) {
-			break;
-		}
-	}
-	while (1) {
-		volatile ULONG vpos = *(volatile ULONG*)0xDFF004;
-		vpos &= 0x1ff00;
-		if (vpos == (311<<8)) {
-			break;
-		}
-	}
-	debug_stop_idle();
-}
-
-void WaitLine(USHORT line)
-{
-	while (1) {
-		volatile ULONG vpos=*(volatile ULONG*)0xDFF004;
-		if (((vpos >> 8) & 511) == line) {
-			break;
-		}
-	}
-}
-
-// FIXME; use this instead of WaitBlit()? Otherwise unused.
-__attribute__((always_inline)) inline void WaitBlt()
-{
-	UWORD tst = *(volatile UWORD*)&custom->dmaconr; // for compatiblity a1000
-	(void)tst;
-	while (*(volatile UWORD*)&custom->dmaconr&(1<<14)) {} //blitter busy wait
-}
-
-void TakeSystem()
-{
-	Forbid();
-
-	// Save current interrupts and DMA settings so we can restore them upon exit. 
-	SystemADKCON = custom->adkconr;
-	SystemInts = custom->intenar;
-	SystemDMA = custom->dmaconr;
-	ActiView = GfxBase->ActiView; //store current view
-
-	LoadView(0);
-	WaitTOF();
-	WaitTOF();
-
-	WaitVbl();
-	WaitVbl();
-
-	OwnBlitter();
-	WaitBlit();	
-	Disable();
-	
-	custom->intena = 0x7fff; // Disable all interrupts
-	custom->intreq = 0x7fff; // Clear any interrupts that were pending
-	custom->dmacon = 0x7fff; // Clear all DMA channels
-
-	// Set all colors black
-	for (int a = 0; a < 32; a++) {
-		custom->color[a] = 0;
-	}
-
-	WaitVbl();
-	WaitVbl();
-
-	VBR = GetVBR();
-	SystemIrq = GetInterruptHandler(); // Store interrupt register
-}
-
-void FreeSystem()
-{
-	WaitVbl();
-	WaitBlit();
-
-	custom->intena = 0x7fff; // Disable all interrupts
-	custom->intreq = 0x7fff; // Clear any interrupts that were pending
-	custom->dmacon = 0x7fff; // Clear all DMA channels
-
-	// Restore interrupts
-	SetInterruptHandler(SystemIrq);
-
-	// Restore system copper lists.
-	custom->cop1lc = (ULONG)GfxBase->copinit;
-	custom->cop2lc = (ULONG)GfxBase->LOFlist;
-	custom->copjmp1 = 0x7fff; // Start coppper
-
-	// Restore all interrupts and DMA settings.
-	custom->intena  = SystemInts | 0x8000;
-	custom->dmacon = SystemDMA | 0x8000;
-	custom->adkcon = SystemADKCON | 0x8000;
-
-	WaitBlit();	
-	DisownBlitter();
-	Enable();
-
-	LoadView(ActiView);
-	WaitTOF();
-	WaitTOF();
-
-	Permit();
-}
+#include "support/gcc8_c_support.h"
+#include <hardware/dmabits.h>
+#include <hardware/intbits.h>
 
 __attribute__((always_inline)) inline short MouseLeft() {return !((*(volatile UBYTE*)0xbfe001)&64);}	
 __attribute__((always_inline)) inline short MouseRight() {return !((*(volatile UWORD*)0xdff016)&(1<<10));}
@@ -203,99 +17,6 @@ INCBIN(ColorPalette, "out/Graphics/Default.PAL")
 INCBIN_CHIP(coconut, "out/Graphics/coconut.BPL")
 INCBIN_CHIP(splitcoconut, "out/Graphics/splitcoconut.BPL")
 INCBIN_CHIP(coconuttree, "out/Graphics/coconut-tree.BPL")
-
-// FIXME: not used
-void* doynaxdepack(const void* input, void* output) { // returns end of output data, input needs to be 16-bit aligned!
-	register volatile const void* _a0 ASM("a0") = input;
-	register volatile       void* _a1 ASM("a1") = output;
-	__asm volatile (
-		"movem.l %%d0-%%d7/%%a2-%%a6,-(%%sp)\n"
-		"jsr _doynaxdepack_vasm\n"
-		"movem.l (%%sp)+,%%d0-%%d7/%%a2-%%a6"
-	: "+rf"(_a0), "+rf"(_a1)
-	:
-	: "cc", "memory");
-	return (void*)_a1;
-}
-
-#ifdef MUSIC
-	INCBIN_CHIP(player, "Sound/lightspeedplayer-mod.bin")
-	INCBIN_CHIP(playerbank, "Sound/coconut.lsbank")
-	INCBIN_CHIP(playermusic, "Sound/coconut.lsmusic")
-
-	struct LSP_MusicInit_Ret {
-		UWORD bpm;
-		unsigned int musicLenTickCount;
-	};
-
-	// For __asm syntax, see https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html
-
-	LSP_MusicInit_Ret LSP_MusicInit(volatile const void *dmacon)
-	{
-		register volatile const void* _a0 ASM("a0") = playermusic;
-		register volatile const void* _a1 ASM("a1") = playerbank;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpointer-arith"
-		register volatile const void* _a2 ASM("a2") = dmacon+1; // low byte address (odd)
-#pragma GCC diagnostic pop
-		register volatile const void* _a3 ASM("a3") = player;
-		register                int   _d0 ASM("d0"); // return value
-		__asm volatile (
-			"movem.l %%d1-%%d7/%%a4-%%a6,-(%%sp)\n"
-			"jsr 0(%%a3)\n"
-			"movem.l (%%sp)+,%%d1-%%d7/%%a4-%%a6"
-		: "=rd" (_d0), "+ra"(_a0)
-		: 
-		: "memory");
-		return {
-			.bpm = (UWORD)( *(UWORD*)_a0 & 0xffff),
-			.musicLenTickCount = (unsigned int)_d0
-		};
-	}
-
-	void LSP_MusicPlayTick()
-	{
-		register volatile const void* _a5 ASM("a5") = player;
-		register volatile const void* _a6 ASM("a6") = (void*)0xdff0a0;
-		__asm volatile (
-			"movem.l %%d0-%%d2/%%a0-%%a4,-(%%sp)\n"
-			"jsr 4(%%a5)\n"
-			"movem.l (%%sp)+,%%d0-%%d2/%%a0-%%a4"
-		: 
-		:
-		: "memory");
-	}
-
-	void LSP_MusicSetPos(int pos)
-	{
-		register volatile const void* _a4 ASM("a4") = player;
-		register volatile const void* _d0 ASM("d0") = (void*)pos;
-		__asm volatile (
-			"movem.l %%d1/%%a0-%%a3,-(%%sp)\n"
-			"jsr 8(%%a4)\n"
-			"movem.l (%%sp)+,%%d1/%%a0-%%a3"
-		: 
-		:
-		: "memory");
-	}
-
-	int LSP_MusicGetPos()
-	{
-		register volatile const void* _a3 ASM("a3") = player;
-		register                int   _d0 ASM("d0"); // return value
-		__asm volatile (
-			"jsr 12(%%a3)"
-		: "=rd"(_d0)
-		:
-		: "memory");
-		return _d0;
-	}
-
-	void LSP_MusicEnd() {
-		// TODO. Nothing in LightSpeedPlayer.asm
-	}
-
-#endif //MUSIC
 
 __attribute__((always_inline)) inline USHORT* copSetPlanes(UBYTE bplPtrStart, USHORT* copListEnd, const UBYTE **planes, int numPlanes)
 {
@@ -342,12 +63,11 @@ static const UBYTE sinus40[] = {
 
 static __attribute__((interrupt)) void interruptHandler()
 {
-	custom->intreq = (1<<INTB_VERTB);
-	custom->intreq = (1<<INTB_VERTB); // Reset vbl req. twice for a4000 bug.
+	auto c {AmigaSystem::GetCustom()};
+	c->intreq = (1<<INTB_VERTB);
+	c->intreq = (1<<INTB_VERTB); // Reset vbl req. twice for a4000 bug.
 
-#ifdef MUSIC
 	LSP_MusicPlayTick();
-#endif
 
 	frameCounter += 1;
 }
@@ -377,25 +97,10 @@ __attribute__((always_inline)) inline USHORT* screenScanDefault(USHORT* copListE
 
 int main()
 {
-	// We will use the graphics library only to locate and restore the system copper list once we are through.
-	GfxBase = (struct GfxBase *)OpenLibrary((CONST_STRPTR)"graphics.library",0);
-	if (!GfxBase) {
-		Exit(0);
-	}
-
-	// Used for printing
-	DOSBase = (struct DosLibrary*)OpenLibrary((CONST_STRPTR)"dos.library", 0);
-	if (!DOSBase)
-		Exit(0);
-
-	KPrintF("Hello debugger from Amiga!\n");
-	Write(Output(), (APTR)"Hello console!\n", 15);
-	Delay(50);
+	// Take system. This must be the very first thing
+	AmigaSystem amigaSystem;
 
 	warpmode(0);
-
-	TakeSystem();
-	WaitVbl();
 
 	const unsigned short planeCount = 5;
 
@@ -417,13 +122,11 @@ int main()
 
 	copPtr = screenScanDefault(copPtr);
 
-#ifdef MUSIC
+	// Music
 	*copPtr++ = offsetof(struct Custom, dmacon);
 	USHORT *dmaConPatch = copPtr;
 	*copPtr++ = DMAF_SETCLR;
-
 	LSP_MusicInit(dmaConPatch);
-#endif
 
 	// Enable bitplanes
 	*copPtr++ = offsetof(struct Custom, bplcon0);
@@ -460,18 +163,19 @@ int main()
 
 	MainView mainView;
 
-	custom->cop1lc = (ULONG)copper1;
-	custom->cop2lc = (ULONG)mainView.GetCopperPtr();
-	custom->dmacon = DMAF_BLITTER; // Disable blitter dma for copjmp bug
-	custom->copjmp1 = 0x7fff; // Start copper
-	custom->dmacon = DMAF_SETCLR | DMAF_MASTER | DMAF_RASTER | DMAF_COPPER | DMAF_BLITTER;
+	auto c {AmigaSystem::GetCustom()};
+	c->cop1lc = (ULONG)copper1;
+	c->cop2lc = (ULONG)mainView.GetCopperPtr();
+	c->dmacon = DMAF_BLITTER; // Disable blitter dma for copjmp bug
+	c->copjmp1 = 0x7fff; // Start copper
+	c->dmacon = DMAF_SETCLR | DMAF_MASTER | DMAF_RASTER | DMAF_COPPER | DMAF_BLITTER;
 
-	SetInterruptHandler((APTR)interruptHandler);
+	amigaSystem.SetInterruptHandler((APTR)interruptHandler);
 
 	warpmode(0);
 	
-	custom->intena = INTF_SETCLR | INTF_INTEN | INTF_VERTB;
-    custom->intreq = (1<<INTB_VERTB); // Reset vbl req
+	c->intena = INTF_SETCLR | INTF_INTEN | INTF_VERTB;
+    c->intreq = (1<<INTB_VERTB); // Reset vbl req
 
 	frameBuffer1.Clear();
 	frameBuffer2.Clear();
@@ -483,7 +187,7 @@ int main()
 	short coconutPosX = 35;
 
 	while (!MouseLeft()) {
-		WaitLine(300);
+		amigaSystem.WaitLine(300);
 
 		// Restore the backbuffer from previously drawn bobs
 		backBuffer->ClearDirtyRegions();
@@ -536,14 +240,4 @@ int main()
 		debug_text(f+ 130, 209*2, "This is a WinUAE debug overlay", 0x00ff00ff);
 #endif
 	}
-
-#ifdef MUSIC
-	LSP_MusicEnd();
-#endif
-
-	// END
-	FreeSystem();
-
-	CloseLibrary((struct Library*)DOSBase);
-	CloseLibrary((struct Library*)GfxBase);
 }
